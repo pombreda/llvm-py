@@ -1,0 +1,22 @@
+
+0.2, 15-Jun-2008:
+
+  * Independent package, need not be unpacked into llvm/bindings
+  * Fixed ownership issues with Module/ModuleProvider
+  * Modules, values and types can be stringified, to get their LLVM
+      assembly representation
+  * Modules and functions can be verified
+  * MemoryBuffer and TypeHandle are available
+  * ExecutionEngine, TargetData and passes are available
+  * Unit tester added (but doesn't test much for now)
+  * Python doc string documentation added (still incomplete)
+  * Many minor style/cosmetic changes and bug fixes
+  * Added documentation as on website into SVN
+  * Lots of cleanup
+
+
+0.1, 10-May-2008:
+
+  * Initial release.
+
+
