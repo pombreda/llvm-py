@@ -1,0 +1,32 @@
+llvm-py: Python Bindings for LLVM
+===================================
+
+llvm-py provides http://www.python.org/[Python] bindings for
+http://llvm.org/[LLVM]. It's goal is to expose enough of LLVM APIs to
+implement a compiler backend or a VM in pure Python. llvm-py consists of
+Python and C modules that wrap over the native C++/C bindings of LLVM,
+and does not use / have dependencies on "glue utilities" like
+Boost.Python, swig etc.
+
+llvm-py is just hatching. It should be stable enough to start hacking
+away, though. Be sure to send in a patch (or shout at the author) if you
+miss any specific LLVM API.
+
+_Availability_: llvm-py is available (as a source package) for LLVM 2.3
+and Python 2.5. It has been built and tested on Linux/i386, and has been
+reported to work with OpenBSD. It is expected to be usable on
+various unices, as well as with Python 2.4 and LLVM 2.3+svn, with
+minimal changes, if any.
+
+News
+----
+
+18-Jun-2008::
+    0.2.1 released. Builds cleanly with LLVM 2.3 and 2.3+svn.
+
+15-Jun-2008::
+    0.2 released. Lots of cleanup, new website, more documentation.
+
+20-May-2008::
+    0.1 released.
+
