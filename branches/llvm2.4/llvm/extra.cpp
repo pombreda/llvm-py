@@ -81,12 +81,12 @@ LLVMValueRef LLVMBuildRetMultiple(LLVMBuilderRef B, LLVMValueRef *Values,
   for (LLVMValueRef *I = Values, *E = Values + NumValues; I != E; ++I)
     Vs.push_back(unwrap(*I));
 
-  return wrap(unwrap(B)->CreateRet(&Vs[0], NumValues));
+  return wrap(unwrap(B)->CreateAggregateRet(&Vs[0], NumValues));
 }
 
 LLVMValueRef LLVMBuildGetResult(LLVMBuilderRef B, LLVMValueRef V,
                                 unsigned Index, const char *Name) {
-  return wrap(unwrap(B)->CreateGetResult(unwrap(V), Index, Name));
+  return wrap(unwrap(B)->CreateExtractValue(unwrap(V), Index, Name));
 }
 
 LLVMValueRef LLVMGetIntrinsic(LLVMModuleRef M, int ID,
