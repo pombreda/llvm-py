@@ -8,8 +8,32 @@
 
 from llvm import *
 from llvm.core import *
+from llvm.ee import *
+from llvm.passes import *
 
 ti = Type.int()
+
+
+def do_llvmexception():
+    print "    Testing class LLVMException"
+    e = LLVMException()
+
+
+def do_ownable():
+    print "    Testing class Ownable"
+    o = Ownable(None, lambda x: None)
+    try:
+        o._own(None)
+        o._disown()
+    except LLVMException:
+        pass
+
+
+def do_llvm():
+    print "  Testing module llvm"
+    do_llvmexception()
+    do_ownable()
+
 
 def do_module():
     print "    Testing class Module"
@@ -33,6 +57,27 @@ def do_module():
         m.verify()
     except LLVMException:
         pass
+
+    class strstream(object):
+        def __init__(self):
+            self.s = ''
+
+        def write(self, data):
+            self.s += data
+
+        def read(self):
+            return self.s
+
+    ss = strstream()
+    m2 = Module.new('test')
+    m2.add_type_name('myint', ti)
+    m2.to_bitcode(ss)
+    m3 = Module.from_bitcode(ss)
+    t = m2 == m3
+    ss2 = strstream()
+    ss2.write(str(m))
+    m4 = Module.from_assembly(ss2)
+    t = m4 == m
 
 
 def do_type():
@@ -117,7 +162,7 @@ def do_constant():
     k = Constant.int(ti, 10)
     f = Constant.real(Type.float(), 3.1415)
     k.neg().not_().add(k).sub(k).mul(k).udiv(k).sdiv(k).urem(k)
-    k.srem(k).and_(k).or_(k).icmp(IPRED_ULT, k)
+    k.srem(k).and_(k).or_(k).xor(k).icmp(IPRED_ULT, k)
     f.fdiv(f).frem(f).fcmp(RPRED_ULT, f)
     vi = Constant.vector([Constant.int(ti,42)]*10)
     vf = Constant.vector([Constant.real(Type.float(), 3.14)]*10)
@@ -151,7 +196,6 @@ def do_global_value():
     gv = GlobalVariable.new(m, Type.int(), 'b')
     s = gv.is_declaration
     m = gv.module
-    s = gv.is_declaration
     gv.linkage = LINKAGE_EXTERNAL
     s = gv.linkage
     gv.section = '.text'
@@ -197,6 +241,7 @@ def do_function():
     f.delete()
     ft = Type.function(ti, [ti]*20)
     f = Function.new(m, ft, 'func2')
+    f2 = Function.intrinsic(m, INTR_COS, [ti])
     g = f.intrinsic_id
     f.calling_convenion = CC_FASTCALL
     g = f.calling_convenion
@@ -267,6 +312,22 @@ def do_switchinstruction():
     bb = Builder.new(b)
     s = bb.switch(f.args[0], b)
     s.add_case(Constant.int(ti, 10), b)
+
+
+def do_basicblock():
+    print "    Testing class BasicBlock"
+    m = Module.new('a')
+    ft = Type.function(ti, [ti])
+    f = Function.new(m, ft, 'func')
+    b = f.append_basic_block('b')
+    bb = Builder.new(b)
+    s = bb.switch(f.args[0], b)
+    s.add_case(Constant.int(ti, 10), b)
+    s = list(b.instructions)
+    b2 = b.insert_before('before')
+    b2.delete()
+    # ff = b.function
+    # ^ not working yet!
 
 
 def do_builder():
@@ -370,14 +431,98 @@ def do_llvm_core():
     do_callorinvokeinstruction()
     do_phinode()
     do_switchinstruction()
+    do_basicblock()
     do_builder()
     do_moduleprovider()
 
 
-def do_llvm():
+def do_targetdata():
+    print "    Testing class TargetData"
+    t = TargetData.new('')
+    t = str(t)
+
+
+def do_genericvalue():
+    print "    Testing class GenericValue"
+    v = GenericValue.int(ti, 1)
+    v = GenericValue.int_signed(ti, 1)
+    v = GenericValue.real(Type.float(), 3.14)
+    a = v.as_int()
+    a = v.as_int_signed()
+    a = v.as_real(Type.float())
+
+
+def do_executionengine():
+    print "    Testing class ExecutionEngine"
+    m = Module.new('a')
+    mp = ModuleProvider.new(m)
+    ee = ExecutionEngine.new(mp, True)
+    ft = Type.function(ti, [])
+    f = m.add_function(ft, 'func')
+    bb = f.append_basic_block('entry')
+    b = Builder.new(bb)
+    b.ret(Constant.int(ti, 42))
+    ee.run_static_ctors()
+    gv = ee.run_function(f, [])
+    is42 = gv.as_int() == 42
+    ee.run_static_dtors()
+    ee.free_machine_code_for(f)
+    t = ee.target_data
+    m2 = Module.new('b')
+    mp2 = ModuleProvider.new(m2)
+    ee.add_module_provider(mp2)
+    m3 = Module.new('c')
+    mp3 = ModuleProvider.new(m3)
+    ee2 = ExecutionEngine.new(mp3, False)
+
+
+def do_llvm_ee():
+    print "  Testing module llvm.ee"
+    do_targetdata()
+    do_genericvalue()
+    do_executionengine()
+
+
+def do_passmanager():
+    print "    Testing class PassManager"
+    pm = PassManager.new()
+    pm.add(TargetData.new(''))
+    for i in range(1, 10):
+        pm.add(i)
+    pm.run(Module.new('a'))
+
+
+def do_functionpassmanager():
+    print "    Testing class FunctionPassManager"
+    m = Module.new('a')
+    mp = ModuleProvider.new(m)
+    ft = Type.function(ti, [])
+    f = m.add_function(ft, 'func')
+    bb = f.append_basic_block('entry')
+    b = Builder.new(bb)
+    b.ret(Constant.int(ti, 42))
+    fpm = FunctionPassManager.new(mp)
+    fpm.add(TargetData.new(''))
+    # to be fixed.
+    # fpm.add(PASS_FUNCTION_INLINING)
+    fpm.initialize()
+    fpm.run(f)
+    fpm.finalize()
+
+
+def do_llvm_passes():
+    print "  Testing module llvm.passes"
+    do_passmanager()
+    do_functionpassmanager()
+
+
+def main():
     print "Testing package llvm"
+    do_llvm()
     do_llvm_core()
+    do_llvm_ee()
+    do_llvm_passes()
 
 
-do_llvm()
+main()
 

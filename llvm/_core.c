@@ -62,8 +62,11 @@ _wLLVMVerifyModule(PyObject *self, PyObject *args)
     return ret;
 }
 
+typedef LLVMModuleRef (*asm_or_bc_fn_t)(const char *A, unsigned Len,
+    char **OutMessage);
+
 static PyObject *
-_wLLVMGetModuleFromBitcode(PyObject *self, PyObject *args)
+_get_asm_or_bc(asm_or_bc_fn_t fn, PyObject *self, PyObject *args)
 {
     PyObject *obj, *ret;
     Py_ssize_t len;
@@ -77,7 +80,7 @@ _wLLVMGetModuleFromBitcode(PyObject *self, PyObject *args)
     len = PyString_Size(obj);
 
     outmsg = 0;
-    m = LLVMGetModuleFromBitcode(start, len, &outmsg);
+    m = fn(start, len, &outmsg);
     if (!m) {
         if (outmsg) {
             ret = PyString_FromString(outmsg);
@@ -89,6 +92,18 @@ _wLLVMGetModuleFromBitcode(PyObject *self, PyObject *args)
     }
 
     return ctor_LLVMModuleRef(m);
+}
+
+static PyObject *
+_wLLVMGetModuleFromAssembly(PyObject *self, PyObject *args)
+{
+    return _get_asm_or_bc(LLVMGetModuleFromAssembly, self, args);
+}
+
+static PyObject *
+_wLLVMGetModuleFromBitcode(PyObject *self, PyObject *args)
+{
+    return _get_asm_or_bc(LLVMGetModuleFromBitcode, self, args);
 }
 
 static PyObject *
@@ -401,8 +416,8 @@ _wrap_obj2none(LLVMDeleteFunction, LLVMValueRef)
 _wrap_obj2obj(LLVMGetIntrinsicID, LLVMValueRef, int)
 _wrap_obj2obj(LLVMGetFunctionCallConv, LLVMValueRef, int)
 _wrap_objint2none(LLVMSetFunctionCallConv, LLVMValueRef)
-_wrap_obj2str(LLVMGetCollector, LLVMValueRef)
-_wrap_objstr2none(LLVMSetCollector, LLVMValueRef)
+_wrap_obj2str(LLVMGetGC, LLVMValueRef)
+_wrap_objstr2none(LLVMSetGC, LLVMValueRef)
 
 static PyObject *
 _wLLVMVerifyFunction(PyObject *self, PyObject *args)
@@ -657,14 +672,72 @@ _wrap_obj2none(LLVMDisposePassManager, LLVMPassManagerRef)
 /* Passes                                                                     */
 /*===----------------------------------------------------------------------===*/
 
-_wrap_obj2none(LLVMAddConstantPropagationPass, LLVMPassManagerRef)
-_wrap_obj2none(LLVMAddInstructionCombiningPass, LLVMPassManagerRef)
-_wrap_obj2none(LLVMAddPromoteMemoryToRegisterPass, LLVMPassManagerRef)
-_wrap_obj2none(LLVMAddDemoteMemoryToRegisterPass, LLVMPassManagerRef)
-_wrap_obj2none(LLVMAddReassociatePass, LLVMPassManagerRef)
-_wrap_obj2none(LLVMAddGVNPass, LLVMPassManagerRef)
-_wrap_obj2none(LLVMAddCFGSimplificationPass, LLVMPassManagerRef)
+#define _wrap_pass(P)   \
+_wrap_obj2none( LLVMAdd ## P ## Pass, LLVMPassManagerRef)
 
+_wrap_pass( AggressiveDCE )
+_wrap_pass( ArgumentPromotion )
+_wrap_pass( BlockPlacement )
+_wrap_pass( BreakCriticalEdges )
+_wrap_pass( CodeGenPrepare )
+_wrap_pass( CondPropagation )
+_wrap_pass( ConstantMerge )
+_wrap_pass( ConstantPropagation )
+_wrap_pass( DeadCodeElimination )
+_wrap_pass( DeadArgElimination )
+_wrap_pass( DeadTypeElimination )
+_wrap_pass( DeadInstElimination )
+_wrap_pass( DeadStoreElimination )
+_wrap_pass( GCSE )
+_wrap_pass( GlobalDCE )
+_wrap_pass( GlobalOptimizer )
+_wrap_pass( GVN )
+_wrap_pass( GVNPRE )
+_wrap_pass( IndMemRem )
+_wrap_pass( IndVarSimplify )
+_wrap_pass( FunctionInlining )
+_wrap_pass( BlockProfiler )
+_wrap_pass( EdgeProfiler )
+_wrap_pass( FunctionProfiler )
+_wrap_pass( NullProfilerRS )
+_wrap_pass( RSProfiling )
+_wrap_pass( InstructionCombining )
+_wrap_pass( Internalize )
+_wrap_pass( IPConstantPropagation )
+_wrap_pass( IPSCCP )
+_wrap_pass( JumpThreading )
+_wrap_pass( LCSSA )
+_wrap_pass( LICM )
+_wrap_pass( LoopDeletion )
+_wrap_pass( LoopExtractor )
+_wrap_pass( SingleLoopExtractor )
+_wrap_pass( LoopIndexSplit )
+_wrap_pass( LoopStrengthReduce )
+_wrap_pass( LoopRotate )
+_wrap_pass( LoopUnroll )
+_wrap_pass( LoopUnswitch )
+_wrap_pass( LoopSimplify )
+_wrap_pass( LowerAllocations )
+_wrap_pass( LowerInvoke )
+_wrap_pass( LowerSetJmp )
+_wrap_pass( LowerSwitch )
+_wrap_pass( PromoteMemoryToRegister )
+_wrap_pass( MemCpyOpt )
+_wrap_pass( UnifyFunctionExitNodes )
+_wrap_pass( PredicateSimplifier )
+_wrap_pass( PruneEH )
+_wrap_pass( RaiseAllocations )
+_wrap_pass( Reassociate )
+_wrap_pass( DemoteRegisterToMemory )
+_wrap_pass( ScalarReplAggregates )
+_wrap_pass( SCCP )
+_wrap_pass( SimplifyLibCalls )
+_wrap_pass( CFGSimplification )
+_wrap_pass( StripSymbols )
+_wrap_pass( StripDeadPrototypes )
+_wrap_pass( StructRetPromotion )
+_wrap_pass( TailCallElimination )
+_wrap_pass( TailDuplication )
 
 /*===----------------------------------------------------------------------===*/
 /* Target Data                                                                */
@@ -717,7 +790,7 @@ _wLLVMCreateExecutionEngine(PyObject *self, PyObject *args)
     if (force_interpreter)
         error = LLVMCreateInterpreter(&ee, mp, &outmsg);
     else
-        error = LLVMCreateJITCompiler(&ee, mp, &outmsg);
+        error = LLVMCreateJITCompiler(&ee, mp, 1, &outmsg);
 
     if (error) {
         ret = PyString_FromString(outmsg);
@@ -836,6 +909,7 @@ _wrap_objintlist2obj(LLVMGetIntrinsic, LLVMModuleRef, LLVMTypeRef,
 /*===----------------------------------------------------------------------===*/
 
 #define _method( func )     { # func , _w ## func , METH_VARARGS },
+#define _pass( P )          _method( LLVMAdd ## P ## Pass )
 
 static PyMethodDef core_methods[] = {
 
@@ -851,6 +925,7 @@ static PyMethodDef core_methods[] = {
     _method( LLVMDisposeModule )
     _method( LLVMDumpModuleToString )
     _method( LLVMVerifyModule )
+    _method( LLVMGetModuleFromAssembly )
     _method( LLVMGetModuleFromBitcode )
     _method( LLVMGetBitcodeFromModule )
 
@@ -1023,8 +1098,8 @@ static PyMethodDef core_methods[] = {
     _method( LLVMGetIntrinsicID )    
     _method( LLVMGetFunctionCallConv )    
     _method( LLVMSetFunctionCallConv )    
-    _method( LLVMGetCollector )    
-    _method( LLVMSetCollector )    
+    _method( LLVMGetGC )    
+    _method( LLVMSetGC )    
     _method( LLVMVerifyFunction )
 
     /* Arguments */
@@ -1165,13 +1240,69 @@ static PyMethodDef core_methods[] = {
     _method( LLVMDisposePassManager )
 
     /* Passes */
-	_method( LLVMAddConstantPropagationPass )
-	_method( LLVMAddInstructionCombiningPass )
-	_method( LLVMAddPromoteMemoryToRegisterPass )
-	_method( LLVMAddDemoteMemoryToRegisterPass )
-	_method( LLVMAddReassociatePass )
-	_method( LLVMAddGVNPass )
-	_method( LLVMAddCFGSimplificationPass )
+    _pass( AggressiveDCE )
+    _pass( ArgumentPromotion )
+    _pass( BlockPlacement )
+    _pass( BreakCriticalEdges )
+    _pass( CodeGenPrepare )
+    _pass( CondPropagation )
+    _pass( ConstantMerge )
+    _pass( ConstantPropagation )
+    _pass( DeadCodeElimination )
+    _pass( DeadArgElimination )
+    _pass( DeadTypeElimination )
+    _pass( DeadInstElimination )
+    _pass( DeadStoreElimination )
+    _pass( GCSE )
+    _pass( GlobalDCE )
+    _pass( GlobalOptimizer )
+    _pass( GVN )
+    _pass( GVNPRE )
+    _pass( IndMemRem )
+    _pass( IndVarSimplify )
+    _pass( FunctionInlining )
+    _pass( BlockProfiler )
+    _pass( EdgeProfiler )
+    _pass( FunctionProfiler )
+    _pass( NullProfilerRS )
+    _pass( RSProfiling )
+    _pass( InstructionCombining )
+    _pass( Internalize )
+    _pass( IPConstantPropagation )
+    _pass( IPSCCP )
+    _pass( JumpThreading )
+    _pass( LCSSA )
+    _pass( LICM )
+    _pass( LoopDeletion )
+    _pass( LoopExtractor )
+    _pass( SingleLoopExtractor )
+    _pass( LoopIndexSplit )
+    _pass( LoopStrengthReduce )
+    _pass( LoopRotate )
+    _pass( LoopUnroll )
+    _pass( LoopUnswitch )
+    _pass( LoopSimplify )
+    _pass( LowerAllocations )
+    _pass( LowerInvoke )
+    _pass( LowerSetJmp )
+    _pass( LowerSwitch )
+    _pass( PromoteMemoryToRegister )
+    _pass( MemCpyOpt )
+    _pass( UnifyFunctionExitNodes )
+    _pass( PredicateSimplifier )
+    _pass( PruneEH )
+    _pass( RaiseAllocations )
+    _pass( Reassociate )
+    _pass( DemoteRegisterToMemory )
+    _pass( ScalarReplAggregates )
+    _pass( SCCP )
+    _pass( SimplifyLibCalls )
+    _pass( CFGSimplification )
+    _pass( StripSymbols )
+    _pass( StripDeadPrototypes )
+    _pass( StructRetPromotion )
+    _pass( TailCallElimination )
+    _pass( TailDuplication )
 
     /* Target Data */
     _method( LLVMCreateTargetData )
