@@ -20,6 +20,15 @@
 #include "llvm/Support/CallSite.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Analysis/Verifier.h"
+#include "llvm/Assembly/Parser.h"
+// +includes for passes
+#include "llvm/PassManager.h"
+#include "llvm/Analysis/LoopPass.h"
+#include "llvm/Transforms/Scalar.h"
+#include "llvm/Transforms/IPO.h"
+#include "llvm/Transforms/Utils/UnifyFunctionExitNodes.h"
+#include "llvm/Transforms/Instrumentation.h"
+// -includes for passes
 
 #include "llvm-c/Core.h"
 
@@ -29,7 +38,7 @@ using namespace llvm;
 
 char *LLVMDumpModuleToString(LLVMModuleRef M) {
   std::ostringstream buf;
-  unwrap(M)->print(buf);
+  unwrap(M)->print(buf, NULL);
   return strdup(buf.str().c_str());
 }
 
@@ -43,6 +52,10 @@ char *LLVMDumpValueToString(LLVMValueRef Val) {
   std::ostringstream buf;
   unwrap(Val)->print(buf);
   return strdup(buf.str().c_str());
+}
+
+int LLVMHasInitializer(LLVMValueRef GlobalVar) {
+  return unwrap<GlobalVariable>(GlobalVar)->hasInitializer();
 }
 
 #if 0 /* after LLVM 2.3! */
@@ -81,12 +94,20 @@ LLVMValueRef LLVMBuildRetMultiple(LLVMBuilderRef B, LLVMValueRef *Values,
   for (LLVMValueRef *I = Values, *E = Values + NumValues; I != E; ++I)
     Vs.push_back(unwrap(*I));
 
-  return wrap(unwrap(B)->CreateAggregateRet(&Vs[0], NumValues));
+#warning "build ret multiple will not work"
+  return NULL;
+/*
+  return wrap(unwrap(B)->CreateRet(&Vs[0], NumValues));
+*/  
 }
 
 LLVMValueRef LLVMBuildGetResult(LLVMBuilderRef B, LLVMValueRef V,
                                 unsigned Index, const char *Name) {
-  return wrap(unwrap(B)->CreateExtractValue(unwrap(V), Index, Name));
+#warning "build get result not work"
+  return NULL;
+/*  
+  return wrap(unwrap(B)->CreateGetResult(unwrap(V), Index, Name));
+*/  
 }
 
 LLVMValueRef LLVMGetIntrinsic(LLVMModuleRef M, int ID,
@@ -100,6 +121,20 @@ LLVMValueRef LLVMGetIntrinsic(LLVMModuleRef M, int ID,
         Intrinsic::ID(ID), &Tys[0], Count);
 
     return wrap(intfunc);
+}
+
+LLVMModuleRef LLVMGetModuleFromAssembly(const char *A, unsigned Len,
+                                        char **OutMessage)
+{
+    ParseError e;
+
+    Module *MP = ParseAssemblyString(A, NULL /*unused within!*/, &e);
+    if (!MP) {
+        *OutMessage = strdup(e.getMessage().c_str());
+        return NULL;
+    }
+
+    return wrap(MP);
 }
 
 LLVMModuleRef LLVMGetModuleFromBitcode(const char *BC, unsigned Len,
@@ -131,3 +166,81 @@ unsigned char *LLVMGetBitcodeFromModule(LLVMModuleRef M, unsigned *Len)
     *Len = len;
     return bytes;
 }
+
+/* passes */
+
+#define define_pass(P)                              \
+void LLVMAdd ## P ## Pass (LLVMPassManagerRef PM) { \
+  unwrap(PM)->add( create ## P ## Pass ());         \
+}
+
+define_pass( AggressiveDCE )
+define_pass( ArgumentPromotion )
+define_pass( BlockPlacement )
+define_pass( BreakCriticalEdges )
+define_pass( CodeGenPrepare )
+define_pass( CondPropagation )
+define_pass( ConstantMerge )
+//LLVM-C define_pass( ConstantPropagation )
+define_pass( DeadCodeElimination )
+define_pass( DeadArgElimination )
+define_pass( DeadTypeElimination )
+define_pass( DeadInstElimination )
+define_pass( DeadStoreElimination )
+
+#warning "gcse pass will not work"
+/*define_pass( GCSE )*/
+void LLVMAddGCSEPass(LLVMPassManagerRef PM) {}
+
+define_pass( GlobalDCE )
+define_pass( GlobalOptimizer )
+//LLVM-C define_pass( GVN )
+define_pass( GVNPRE )
+define_pass( IndMemRem )
+define_pass( IndVarSimplify )
+define_pass( FunctionInlining )
+define_pass( BlockProfiler )
+define_pass( EdgeProfiler )
+define_pass( FunctionProfiler )
+define_pass( NullProfilerRS )
+define_pass( RSProfiling )
+//LLVM-C define_pass( InstructionCombining )
+/* we support only internalize(true) */
+ModulePass *createInternalizePass() { return llvm::createInternalizePass(true); }
+define_pass( Internalize )
+define_pass( IPConstantPropagation )
+define_pass( IPSCCP )
+define_pass( JumpThreading )
+define_pass( LCSSA )
+define_pass( LICM )
+define_pass( LoopDeletion )
+define_pass( LoopExtractor )
+define_pass( SingleLoopExtractor )
+define_pass( LoopIndexSplit )
+define_pass( LoopStrengthReduce )
+define_pass( LoopRotate )
+define_pass( LoopUnroll )
+define_pass( LoopUnswitch )
+define_pass( LoopSimplify )
+define_pass( LowerAllocations )
+define_pass( LowerInvoke )
+define_pass( LowerSetJmp )
+define_pass( LowerSwitch )
+//LLVM-C define_pass( PromoteMemoryToRegister )
+define_pass( MemCpyOpt )
+define_pass( UnifyFunctionExitNodes )
+define_pass( PredicateSimplifier )
+define_pass( PruneEH )
+define_pass( RaiseAllocations )
+//LLVM-C define_pass( Reassociate )
+define_pass( DemoteRegisterToMemory )
+define_pass( ScalarReplAggregates )
+define_pass( SCCP )
+define_pass( SimplifyLibCalls )
+//LLVM-C define_pass( CFGSimplification )
+define_pass( StripSymbols )
+define_pass( StripDeadPrototypes )
+define_pass( StructRetPromotion )
+define_pass( TailCallElimination )
+define_pass( TailDuplication )
+
