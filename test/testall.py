@@ -52,6 +52,9 @@ def do_module():
     ft = Type.function(ti, [ti])
     m.add_function(ft, "func")
     m.get_function_named("func")
+    m.get_or_insert_function(ft, "func")
+    m.get_or_insert_function(Type.function(ti, []), "func")
+    m.get_or_insert_function(ft, "func2")
     fns = list(m.functions)
     try:
         m.verify()
@@ -78,6 +81,7 @@ def do_module():
     ss2.write(str(m))
     m4 = Module.from_assembly(ss2)
     t = m4 == m
+    t = m4.pointer_size
 
 
 def do_type():
@@ -94,7 +98,8 @@ def do_type():
     Type.struct([ti]*100)
     Type.packed_struct([ti]*100)
     Type.array(ti, 100)
-    Type.pointer(ti, 4)
+    ptr = Type.pointer(ti, 4)
+    pte = ptr.pointee
     Type.vector(ti, 100)
     Type.void()
     Type.label()
@@ -409,6 +414,17 @@ def do_builder():
     # destruction.
     i = b.phi(Type.int())
     i.add_incoming(v, blk)
+    t = i.is_terminator == False
+    t = i.is_binary_op == False
+    t = i.is_shift == False
+    t = i.is_cast == False
+    t = i.is_logical_shift == False
+    t = i.is_arithmetic_shift == False
+    t = i.is_associative == False
+    t = i.is_commutative == False
+    t = i.is_trapping == False
+    t = i.opcode
+    t = i.opcode_name
 
 
 def do_moduleprovider():

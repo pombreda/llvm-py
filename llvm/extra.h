@@ -53,6 +53,27 @@ LLVMValueRef LLVMBuildGetResult(LLVMBuilderRef, LLVMValueRef V,
 LLVMValueRef LLVMGetIntrinsic(LLVMModuleRef B, int ID,
                               LLVMTypeRef *Types, unsigned Count);
 
+/* module */
+
+unsigned LLVMModuleGetPointerSize(LLVMModuleRef M);
+LLVMValueRef LLVMModuleGetOrInsertFunction(LLVMModuleRef M, 
+    const char *Name, LLVMTypeRef FunctionTy);
+
+/* instruction */
+
+unsigned LLVMInstIsTerminator(LLVMValueRef I);
+unsigned LLVMInstIsBinaryOp(LLVMValueRef I);
+unsigned LLVMInstIsShift(LLVMValueRef I);
+unsigned LLVMInstIsCast(LLVMValueRef I);
+unsigned LLVMInstIsLogicalShift(LLVMValueRef I);
+unsigned LLVMInstIsArithmeticShift(LLVMValueRef I);
+unsigned LLVMInstIsAssociative(LLVMValueRef I);
+unsigned LLVMInstIsCommutative(LLVMValueRef I);
+unsigned LLVMInstIsTrapping(LLVMValueRef I);
+
+const char *LLVMInstGetOpcodeName(LLVMValueRef I);
+unsigned LLVMInstGetOpcode(LLVMValueRef I);
+
 /* reading llvm "assembly" */
 
 LLVMModuleRef LLVMGetModuleFromAssembly(const char *A, unsigned Len,
