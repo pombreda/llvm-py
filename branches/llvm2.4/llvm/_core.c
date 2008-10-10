@@ -38,6 +38,9 @@ _wrap_objstr2none(LLVMDeleteTypeName, LLVMModuleRef)
 _wrap_obj2none(LLVMDumpModule, LLVMModuleRef)
 _wrap_obj2none(LLVMDisposeModule, LLVMModuleRef)
 _wrap_dumper(LLVMDumpModuleToString, LLVMModuleRef)
+_wrap_obj2obj(LLVMModuleGetPointerSize, LLVMModuleRef, int)
+_wrap_objstrobj2obj(LLVMModuleGetOrInsertFunction, LLVMModuleRef, 
+    LLVMTypeRef, LLVMValueRef)      
 
 static PyObject *
 _wLLVMVerifyModule(PyObject *self, PyObject *args)
@@ -418,6 +421,8 @@ _wrap_obj2obj(LLVMGetFunctionCallConv, LLVMValueRef, int)
 _wrap_objint2none(LLVMSetFunctionCallConv, LLVMValueRef)
 _wrap_obj2str(LLVMGetGC, LLVMValueRef)
 _wrap_objstr2none(LLVMSetGC, LLVMValueRef)
+_wrap_obj2none(LLVMViewFunctionCFG, LLVMValueRef)
+_wrap_obj2none(LLVMViewFunctionCFGOnly, LLVMValueRef)
 
 static PyObject *
 _wLLVMVerifyFunction(PyObject *self, PyObject *args)
@@ -439,8 +444,8 @@ _wrap_obj2obj(LLVMCountParams, LLVMValueRef, int)
 _wrap_obj2obj(LLVMGetFirstParam, LLVMValueRef, LLVMValueRef)
 _wrap_obj2obj(LLVMGetNextParam, LLVMValueRef, LLVMValueRef)
 _wrap_obj2obj(LLVMGetParamParent, LLVMValueRef, LLVMValueRef)
-_wrap_objint2none(LLVMAddParamAttr, LLVMValueRef)
-_wrap_objint2none(LLVMRemoveParamAttr, LLVMValueRef)
+_wrap_objint2none(LLVMAddAttribute, LLVMValueRef)
+_wrap_objint2none(LLVMRemoveAttribute, LLVMValueRef)
 _wrap_objint2none(LLVMSetParamAlignment, LLVMValueRef)
 
 /*===-- Basic Blocks -----------------------------------------------------===*/
@@ -459,13 +464,25 @@ _wrap_obj2none(LLVMDeleteBasicBlock, LLVMBasicBlockRef)
 _wrap_obj2obj(LLVMGetInstructionParent, LLVMValueRef, LLVMBasicBlockRef)
 _wrap_obj2obj(LLVMGetFirstInstruction, LLVMBasicBlockRef, LLVMValueRef)
 _wrap_obj2obj(LLVMGetNextInstruction, LLVMValueRef, LLVMValueRef)
+_wrap_obj2obj(LLVMInstIsTerminator,   LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsBinaryOp,     LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsShift,        LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsCast,         LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsLogicalShift, LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsArithmeticShift, LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsAssociative,  LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsCommutative,  LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstIsTrapping,     LLVMValueRef, int)
+_wrap_obj2obj(LLVMInstGetOpcode, LLVMValueRef, int)
+_wrap_obj2str(LLVMInstGetOpcodeName, LLVMValueRef)
+
 
 /*===-- Call Sites (Call or Invoke) --------------------------------------===*/
 
 _wrap_objint2none(LLVMSetInstructionCallConv, LLVMValueRef)
 _wrap_obj2obj(LLVMGetInstructionCallConv, LLVMValueRef, int)
-_wrap_objintint2none(LLVMAddInstrParamAttr, LLVMValueRef)
-_wrap_objintint2none(LLVMRemoveInstrParamAttr, LLVMValueRef)
+_wrap_objintint2none(LLVMAddInstrAttribute, LLVMValueRef)
+_wrap_objintint2none(LLVMRemoveInstrAttribute, LLVMValueRef)
 _wrap_objintint2none(LLVMSetInstrParamAlignment, LLVMValueRef)
 
 /*===-- PHI Nodes --------------------------------------------------------===*/
@@ -928,6 +945,8 @@ static PyMethodDef core_methods[] = {
     _method( LLVMGetModuleFromAssembly )
     _method( LLVMGetModuleFromBitcode )
     _method( LLVMGetBitcodeFromModule )
+    _method( LLVMModuleGetPointerSize )
+    _method( LLVMModuleGetOrInsertFunction )
 
     /* Types */
 
@@ -1101,14 +1120,16 @@ static PyMethodDef core_methods[] = {
     _method( LLVMGetGC )    
     _method( LLVMSetGC )    
     _method( LLVMVerifyFunction )
+    _method( LLVMViewFunctionCFG )
+    _method( LLVMViewFunctionCFGOnly )
 
     /* Arguments */
     _method( LLVMCountParams )    
     _method( LLVMGetFirstParam )    
     _method( LLVMGetNextParam )    
     _method( LLVMGetParamParent )    
-    _method( LLVMAddParamAttr )    
-    _method( LLVMRemoveParamAttr )    
+    _method( LLVMAddAttribute )    
+    _method( LLVMRemoveAttribute )    
     _method( LLVMSetParamAlignment )    
 
     /* Basic Blocks */
@@ -1125,12 +1146,23 @@ static PyMethodDef core_methods[] = {
     _method( LLVMGetInstructionParent )    
     _method( LLVMGetFirstInstruction )
     _method( LLVMGetNextInstruction )
+    _method( LLVMInstIsTerminator )
+    _method( LLVMInstIsBinaryOp )
+    _method( LLVMInstIsShift )
+    _method( LLVMInstIsCast )
+    _method( LLVMInstIsLogicalShift )
+    _method( LLVMInstIsArithmeticShift )
+    _method( LLVMInstIsAssociative )
+    _method( LLVMInstIsCommutative )
+    _method( LLVMInstIsTrapping )
+    _method( LLVMInstGetOpcode )
+    _method( LLVMInstGetOpcodeName )
 
     /* Call Sites (Call or Invoke) */
     _method( LLVMSetInstructionCallConv )    
     _method( LLVMGetInstructionCallConv )    
-    _method( LLVMAddInstrParamAttr )    
-    _method( LLVMRemoveInstrParamAttr )    
+    _method( LLVMAddInstrAttribute )    
+    _method( LLVMRemoveInstrAttribute )    
     _method( LLVMSetInstrParamAlignment )    
 
     /* PHI Nodes */

@@ -698,7 +698,6 @@ INTR_X86_SSSE3_PSIGN_W_128     = 594
 
 def check_is_type(obj):     check_gen(obj, Type)
 def check_is_value(obj):    check_gen(obj, Value)
-def check_is_pointer(obj):  check_gen(obj, Pointer)
 def check_is_constant(obj): check_gen(obj, Constant)
 def check_is_function(obj): check_gen(obj, Function)
 def check_is_basic_block(obj): check_gen(obj, BasicBlock)
@@ -708,6 +707,15 @@ def check_is_module_provider(obj): check_gen(obj, ModuleProvider)
 def unpack_types(objlist):     return unpack_gen(objlist, check_is_type)
 def unpack_values(objlist):    return unpack_gen(objlist, check_is_value)
 def unpack_constants(objlist): return unpack_gen(objlist, check_is_constant)
+
+def check_is_callable(obj):
+    if isinstance(obj, Function):
+        return
+    type = obj.type
+    if isinstance(type, PointerType) and \
+        isinstance(type.pointee, FunctionType):
+        return
+    raise TypeError, "argument is neither a function nor a function pointer"
 
 
 #===----------------------------------------------------------------------===
@@ -814,6 +822,14 @@ class Module(llvm.Ownable):
         """
     )
 
+    @property
+    def pointer_size(self):
+        """Pointer size of target platform.
+
+        Can be 0, 32 or 64. Zero represents
+        llvm::Module::AnyPointerSize."""
+        return _core.LLVMModuleGetPointerSize(self.ptr)
+
     def add_type_name(self, name, ty):
         """Map a string to a type.
 
@@ -859,6 +875,9 @@ class Module(llvm.Ownable):
     def get_function_named(self, name):
         """Return a Function object representing function with given name."""
         return Function.get(self, name)
+
+    def get_or_insert_function(self, ty, name):
+        return Function.get_or_insert(self, ty, name)
 
     @property
     def functions(self):
@@ -1165,6 +1184,12 @@ class PointerType(Type):
 
         Use one of the static methods of the *base* class (Type) instead."""
         Type.__init__(self, ptr, kind)
+
+    @property
+    def pointee(self):
+        ptr = _core.LLVMGetElementType(self.ptr)
+        kind = _core.LLVMGetTypeKind(ptr)
+        return _make_type(ptr, kind)
 
     @property
     def address_space(self):
@@ -1574,10 +1599,10 @@ class Argument(Value):
         Value.__init__(self, ptr)
 
     def add_attribute(self, attr):
-        _core.LLVMAddParamAttr(self.ptr, attr)
+        _core.LLVMAddAttribute(self.ptr, attr)
 
     def remove_attribute(self, attr):
-        _core.LLVMRemoveParamAttr(self.ptr, attr)
+        _core.LLVMRemoveAttribute(self.ptr, attr)
 
     def set_alignment(self, align):
         _core.LLVMSetParamAlignment(self.ptr, align)
@@ -1589,7 +1614,15 @@ class Function(GlobalValue):
     def new(module, func_ty, name):
         check_is_module(module)
         check_is_type(func_ty)
-        return Function(_core.LLVMAddFunction(module.ptr, name, func_ty.ptr), module)
+        return Function(_core.LLVMAddFunction(module.ptr, name, \
+            func_ty.ptr), module)
+
+    @staticmethod
+    def get_or_insert(module, func_ty, name):
+        check_is_module(module)
+        check_is_type(func_ty)
+        return Function(_core.LLVMModuleGetOrInsertFunction(module.ptr, \
+            name, func_ty.ptr), module)
 
     @staticmethod
     def get(module, name):
@@ -1645,6 +1678,12 @@ class Function(GlobalValue):
         return wrapiter(_core.LLVMGetFirstBasicBlock, 
             _core.LLVMGetNextBasicBlock, self.ptr, BasicBlock)
 
+    def viewCFG(self):
+        return _core.LLVMViewFunctionCFG(self.ptr)
+
+    def viewCFGOnly(self):
+        return _core.LLVMViewFunctionCFGOnly(self.ptr)
+
     def verify(self):
         # Although we're just asking LLVM to return the success or
         # failure, it appears to print result to stderr and abort.
@@ -1664,6 +1703,50 @@ class Instruction(Value):
     def basic_block(self):
         return BasicBlock(_core.LLVMGetInstructionParent(self.ptr))
 
+    @property
+    def is_terminator(self):
+        return _core.LLVMInstIsTerminator(self.ptr) != 0
+
+    @property
+    def is_binary_op(self):
+        return _core.LLVMInstIsBinaryOp(self.ptr) != 0
+
+    @property
+    def is_shift(self):
+        return _core.LLVMInstIsShift(self.ptr) != 0
+
+    @property
+    def is_cast(self):
+        return _core.LLVMInstIsCast(self.ptr) != 0
+
+    @property
+    def is_logical_shift(self):
+        return _core.LLVMInstIsLogicalShift(self.ptr) != 0
+
+    @property
+    def is_arithmetic_shift(self):
+        return _core.LLVMInstIsArithmeticShift(self.ptr) != 0
+
+    @property
+    def is_associative(self):
+        return _core.LLVMInstIsAssociative(self.ptr) != 0
+
+    @property
+    def is_commutative(self):
+        return _core.LLVMInstIsCommutative(self.ptr) != 0
+
+    @property
+    def is_trapping(self):
+        return _core.LLVMInstIsTrapping(self.ptr) != 0
+
+    @property
+    def opcode(self):
+        return _core.LLVMInstGetOpcode(self.ptr)
+
+    @property
+    def opcode_name(self):
+        return _core.LLVMInstGetOpcodeName(self.ptr)
+
 
 class CallOrInvokeInstruction(Instruction):
 
@@ -1675,10 +1758,10 @@ class CallOrInvokeInstruction(Instruction):
     calling_convention = property(_get_cc, _set_cc)
 
     def add_parameter_attribute(self, idx, attr):
-        _core.LLVMAddInstrParamAttr(self.ptr, idx, attr)
+        _core.LLVMAddInstrAttribute(self.ptr, idx, attr)
 
     def remove_parameter_attribute(self, idx, attr):
-        _core.LLVMRemoveInstrParamAttr(self.ptr, idx, attr)
+        _core.LLVMRemoveInstrAttribute(self.ptr, idx, attr)
 
     def set_parameter_alignment(self, idx, align):
         _core.LLVMSetInstrParamAlignment(self.ptr, idx, align)
@@ -1817,7 +1900,7 @@ class Builder(object):
         return SwitchInstruction(_core.LLVMBuildSwitch(self.ptr, value.ptr, else_blk.ptr, n))
         
     def invoke(self, func, args, then_blk, catch_blk, name=""):
-        check_is_function(func)
+        check_is_callable(func)
         check_is_basic_block(then_blk)
         check_is_basic_block(catch_blk)
         args2 = unpack_values(args)
@@ -2048,15 +2131,15 @@ class Builder(object):
         return PHINode(_core.LLVMBuildPhi(self.ptr, ty.ptr, name))
         
     def call(self, fn, args, name=""):
-        check_is_function(fn)
+        check_is_callable(fn)
         arg_ptrs = unpack_values(args)
         return CallOrInvokeInstruction(_core.LLVMBuildCall(self.ptr, fn.ptr, arg_ptrs, name))
         
-    def select(self, cond, then_blk, else_blk, name=""):
+    def select(self, cond, then_value, else_value, name=""):
         check_is_value(cond)
-        check_is_basic_block(then_blk)
-        check_is_basic_block(else_blk)
-        return Value(_core.LLVMBuildSelect(self.ptr, cond.ptr, then_blk.ptr, else_blk.ptr, name))
+        check_is_value(then_value)
+        check_is_value(else_value)
+        return Value(_core.LLVMBuildSelect(self.ptr, cond.ptr, then_value.ptr, else_value.ptr, name))
     
     def vaarg(self, list_val, ty, name=""):
         check_is_value(list_val)
