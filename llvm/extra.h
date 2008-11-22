@@ -66,22 +66,6 @@ LLVMValueRef LLVMBuildRetMultiple(LLVMBuilderRef bulder, LLVMValueRef *values,
 LLVMValueRef LLVMBuildGetResult(LLVMBuilderRef builder, LLVMValueRef value,
     unsigned index, const char *name);
 
-/* Wraps llvm::ConstantExpr::getVICmp(). */
-LLVMValueRef LLVMConstVICmp(LLVMIntPredicate predicate, LLVMValueRef lhs,
-    LLVMValueRef rhs);
-
-/* Wraps llvm::ConstantExpr::getVFCmp(). */
-LLVMValueRef LLVMConstVFCmp(LLVMRealPredicate predicate, LLVMValueRef lhs,
-    LLVMValueRef rhs);
-
-/* Wraps llvm::IRBuilder::CreateVICmp(). */    
-LLVMValueRef LLVMBuildVICmp(LLVMBuilderRef builder, LLVMIntPredicate predicate,
-    LLVMValueRef lhs, LLVMValueRef rhs, const char *name);
-
-/* Wraps llvm::IRBuilder::CreateVFCmp(). */    
-LLVMValueRef LLVMBuildVFCmp(LLVMBuilderRef builder, LLVMRealPredicate predicate,
-    LLVMValueRef lhs, LLVMValueRef rhs, const char *name);
-    
 /* Wraps llvm::Intrinsic::getDeclaration(). */
 LLVMValueRef LLVMGetIntrinsic(LLVMModuleRef builder, int id,
     LLVMTypeRef *types, unsigned n_types);
@@ -93,9 +77,6 @@ unsigned LLVMModuleGetPointerSize(LLVMModuleRef module);
 LLVMValueRef LLVMModuleGetOrInsertFunction(LLVMModuleRef module, 
     const char *name, LLVMTypeRef function_type);
 
-/* Wraps llvm::GlobalVariable::hasInitializer(). */    
-int LLVMHasInitializer(LLVMValueRef global_var);
-    
 /* The following functions wrap various llvm::Instruction::isXXX() functions.
  * All of them take an instruction and return 0 (isXXX returned false) or 1
  * (isXXX returned false). */
@@ -162,7 +143,7 @@ declare_pass( DeadArgElimination )
 declare_pass( DeadTypeElimination )
 declare_pass( DeadInstElimination )
 declare_pass( DeadStoreElimination )
-/* declare_pass( GCSE ): removed in LLVM 2.4. */
+declare_pass( GCSE )
 declare_pass( GlobalDCE )
 declare_pass( GlobalOptimizer )
 declare_pass( GVNPRE )

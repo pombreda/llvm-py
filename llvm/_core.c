@@ -384,8 +384,10 @@ _wrap_objobj2obj(LLVMConstXor, LLVMValueRef, LLVMValueRef, LLVMValueRef)
 
 _wrap_intobjobj2obj(LLVMConstICmp, LLVMValueRef, LLVMValueRef, LLVMValueRef)
 _wrap_intobjobj2obj(LLVMConstFCmp, LLVMValueRef, LLVMValueRef, LLVMValueRef)
+/* after LLVM 2.3!
 _wrap_intobjobj2obj(LLVMConstVICmp, LLVMValueRef, LLVMValueRef, LLVMValueRef)
 _wrap_intobjobj2obj(LLVMConstVFCmp, LLVMValueRef, LLVMValueRef, LLVMValueRef)
+*/
 
 _wrap_objobj2obj(LLVMConstShl, LLVMValueRef, LLVMValueRef, LLVMValueRef)
 _wrap_objobj2obj(LLVMConstLShr, LLVMValueRef, LLVMValueRef, LLVMValueRef)
@@ -451,8 +453,8 @@ _wrap_obj2none(LLVMDeleteFunction, LLVMValueRef)
 _wrap_obj2obj(LLVMGetIntrinsicID, LLVMValueRef, int)
 _wrap_obj2obj(LLVMGetFunctionCallConv, LLVMValueRef, int)
 _wrap_objint2none(LLVMSetFunctionCallConv, LLVMValueRef)
-_wrap_obj2str(LLVMGetGC, LLVMValueRef)
-_wrap_objstr2none(LLVMSetGC, LLVMValueRef)
+_wrap_obj2str(LLVMGetCollector, LLVMValueRef)
+_wrap_objstr2none(LLVMSetCollector, LLVMValueRef)
 _wrap_obj2none(LLVMViewFunctionCFG, LLVMValueRef)
 _wrap_obj2none(LLVMViewFunctionCFGOnly, LLVMValueRef)
 
@@ -474,8 +476,8 @@ _wrap_obj2obj(LLVMCountParams, LLVMValueRef, int)
 _wrap_obj2obj(LLVMGetFirstParam, LLVMValueRef, LLVMValueRef)
 _wrap_obj2obj(LLVMGetNextParam, LLVMValueRef, LLVMValueRef)
 _wrap_obj2obj(LLVMGetParamParent, LLVMValueRef, LLVMValueRef)
-_wrap_objint2none(LLVMAddAttribute, LLVMValueRef)
-_wrap_objint2none(LLVMRemoveAttribute, LLVMValueRef)
+_wrap_objint2none(LLVMAddParamAttr, LLVMValueRef)
+_wrap_objint2none(LLVMRemoveParamAttr, LLVMValueRef)
 _wrap_objint2none(LLVMSetParamAlignment, LLVMValueRef)
 
 /*===-- Basic Blocks -----------------------------------------------------===*/
@@ -511,8 +513,8 @@ _wrap_obj2str(LLVMInstGetOpcodeName,  LLVMValueRef)
 
 _wrap_objint2none(LLVMSetInstructionCallConv, LLVMValueRef)
 _wrap_obj2obj(LLVMGetInstructionCallConv, LLVMValueRef, int)
-_wrap_objintint2none(LLVMAddInstrAttribute, LLVMValueRef)
-_wrap_objintint2none(LLVMRemoveInstrAttribute, LLVMValueRef)
+_wrap_objintint2none(LLVMAddInstrParamAttr, LLVMValueRef)
+_wrap_objintint2none(LLVMRemoveInstrParamAttr, LLVMValueRef)
 _wrap_objintint2none(LLVMSetInstrParamAlignment, LLVMValueRef)
 
 /*===-- PHI Nodes --------------------------------------------------------===*/
@@ -632,8 +634,10 @@ _wrap_objobjobjstr2obj(LLVMBuildBitCast, LLVMBuilderRef, LLVMValueRef, LLVMTypeR
 
 _wrap_objintobjobjstr2obj(LLVMBuildICmp, LLVMBuilderRef, LLVMValueRef, LLVMValueRef, LLVMValueRef)
 _wrap_objintobjobjstr2obj(LLVMBuildFCmp, LLVMBuilderRef, LLVMValueRef, LLVMValueRef, LLVMValueRef)
+/* after LLVM 2.3!
 _wrap_objintobjobjstr2obj(LLVMBuildVICmp, LLVMBuilderRef, LLVMValueRef, LLVMValueRef, LLVMValueRef)
 _wrap_objintobjobjstr2obj(LLVMBuildVFCmp, LLVMBuilderRef, LLVMValueRef, LLVMValueRef, LLVMValueRef)
+*/
 
 /* Miscellaneous instructions */
 
@@ -733,7 +737,7 @@ _wrap_pass( DeadArgElimination )
 _wrap_pass( DeadTypeElimination )
 _wrap_pass( DeadInstElimination )
 _wrap_pass( DeadStoreElimination )
-/* _wrap_pass( GCSE ): removed in LLVM 2.4. */
+_wrap_pass( GCSE )
 _wrap_pass( GlobalDCE )
 _wrap_pass( GlobalOptimizer )
 _wrap_pass( GVN )
@@ -833,7 +837,7 @@ _wLLVMCreateExecutionEngine(PyObject *self, PyObject *args)
     if (force_interpreter)
         error = LLVMCreateInterpreter(&ee, mp, &outmsg);
     else
-        error = LLVMCreateJITCompiler(&ee, mp, 1 /*fast*/, &outmsg);
+        error = LLVMCreateJITCompiler(&ee, mp, &outmsg);
 
     if (error) {
         ret = PyString_FromString(outmsg);
@@ -1109,8 +1113,10 @@ static PyMethodDef core_methods[] = {
     _method( LLVMConstXor )    
     _method( LLVMConstICmp )    
     _method( LLVMConstFCmp )    
+    /* after LLVM 2.3!
     _method( LLVMConstVICmp )
     _method( LLVMConstVFCmp )
+    */
     _method( LLVMConstShl )    
     _method( LLVMConstLShr )    
     _method( LLVMConstAShr )    
@@ -1168,9 +1174,9 @@ static PyMethodDef core_methods[] = {
     _method( LLVMDeleteFunction )    
     _method( LLVMGetIntrinsicID )    
     _method( LLVMGetFunctionCallConv )    
-    _method( LLVMSetFunctionCallConv )
-    _method( LLVMGetGC )
-    _method( LLVMSetGC )
+    _method( LLVMSetFunctionCallConv )    
+    _method( LLVMGetCollector )    
+    _method( LLVMSetCollector )    
     _method( LLVMVerifyFunction )
     _method( LLVMViewFunctionCFG )
     _method( LLVMViewFunctionCFGOnly )
@@ -1180,8 +1186,8 @@ static PyMethodDef core_methods[] = {
     _method( LLVMGetFirstParam )    
     _method( LLVMGetNextParam )    
     _method( LLVMGetParamParent )    
-    _method( LLVMAddAttribute )
-    _method( LLVMRemoveAttribute )
+    _method( LLVMAddParamAttr )    
+    _method( LLVMRemoveParamAttr )    
     _method( LLVMSetParamAlignment )    
 
     /* Basic Blocks */
@@ -1213,8 +1219,8 @@ static PyMethodDef core_methods[] = {
     /* Call Sites (Call or Invoke) */
     _method( LLVMSetInstructionCallConv )    
     _method( LLVMGetInstructionCallConv )    
-    _method( LLVMAddInstrAttribute )    
-    _method( LLVMRemoveInstrAttribute )    
+    _method( LLVMAddInstrParamAttr )    
+    _method( LLVMRemoveInstrParamAttr )    
     _method( LLVMSetInstrParamAlignment )    
 
     /* PHI Nodes */
@@ -1290,8 +1296,10 @@ static PyMethodDef core_methods[] = {
     /* Comparisons */
     _method( LLVMBuildICmp )    
     _method( LLVMBuildFCmp )    
+    /* after LLVM 2.3!
     _method( LLVMBuildVICmp )    
     _method( LLVMBuildVFCmp )    
+    */
 
     /* Miscellaneous instructions */
     _method( LLVMBuildGetResult )    
@@ -1335,7 +1343,7 @@ static PyMethodDef core_methods[] = {
     _pass( DeadTypeElimination )
     _pass( DeadInstElimination )
     _pass( DeadStoreElimination )
-    /* _pass( GCSE ): removed in LLVM 2.4. */
+    _pass( GCSE )
     _pass( GlobalDCE )
     _pass( GlobalOptimizer )
     _pass( GVN )

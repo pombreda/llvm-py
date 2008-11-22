@@ -82,11 +82,7 @@ char *do_print(W obj)
 
 char *LLVMDumpModuleToString(LLVMModuleRef module)
 {
-    std::ostringstream buf;
-    llvm::Module *p = llvm::unwrap(module);
-    assert(p);
-    p->print(buf, NULL);
-    return strdup(buf.str().c_str());
+    return do_print<LLVMModuleRef, llvm::Module>(module);
 }
 
 char *LLVMDumpTypeToString(LLVMTypeRef type)
@@ -97,66 +93,6 @@ char *LLVMDumpTypeToString(LLVMTypeRef type)
 char *LLVMDumpValueToString(LLVMValueRef value)
 {
     return do_print<LLVMValueRef, llvm::Value>(value);
-}
-
-LLVMValueRef LLVMConstVICmp(LLVMIntPredicate predicate, LLVMValueRef lhs,
-    LLVMValueRef rhs)
-{
-    llvm::Constant *lhsp = llvm::unwrap<llvm::Constant>(lhs);
-    assert(lhsp);
-    llvm::Constant *rhsp = llvm::unwrap<llvm::Constant>(rhs);
-    assert(rhsp);
-
-    llvm::Constant *vicmp =
-        llvm::ConstantExpr::getVICmp(predicate, lhsp, rhsp);
-    return llvm::wrap(vicmp);
-}
-    
-LLVMValueRef LLVMConstVFCmp(LLVMRealPredicate predicate, LLVMValueRef lhs,
-    LLVMValueRef rhs)
-{
-    llvm::Constant *lhsp = llvm::unwrap<llvm::Constant>(lhs);
-    assert(lhsp);
-    llvm::Constant *rhsp = llvm::unwrap<llvm::Constant>(rhs);
-    assert(rhsp);
-
-    llvm::Constant *vfcmp =
-        llvm::ConstantExpr::getVFCmp(predicate, lhsp, rhsp);
-    return llvm::wrap(vfcmp);
-}
-
-LLVMValueRef LLVMBuildVICmp(LLVMBuilderRef builder, LLVMIntPredicate predicate,
-    LLVMValueRef lhs, LLVMValueRef rhs, const char *name)
-{
-    llvm::IRBuilder<> *builderp = llvm::unwrap(builder);
-    assert(builderp);
-
-    llvm::Value *lhsp = llvm::unwrap(lhs);
-    assert(lhsp);
-    llvm::Value *rhsp = llvm::unwrap(rhs);
-    assert(rhsp);
-
-    llvm::Value *inst = builderp->CreateVICmp(
-        static_cast<llvm::CmpInst::Predicate>(predicate),
-        lhsp, rhsp, name);
-    return llvm::wrap(inst);
-}
-
-LLVMValueRef LLVMBuildVFCmp(LLVMBuilderRef builder, LLVMRealPredicate predicate,
-    LLVMValueRef lhs, LLVMValueRef rhs, const char *name)
-{
-    llvm::IRBuilder<> *builderp = llvm::unwrap(builder);
-    assert(builderp);
-
-    llvm::Value *lhsp = llvm::unwrap(lhs);
-    assert(lhsp);
-    llvm::Value *rhsp = llvm::unwrap(rhs);
-    assert(rhsp);
-
-    llvm::Value *inst = builderp->CreateVFCmp(
-        static_cast<llvm::CmpInst::Predicate>(predicate),
-        lhsp, rhsp, name);
-    return llvm::wrap(inst);
 }
 
 unsigned LLVMModuleGetPointerSize(LLVMModuleRef module)
@@ -185,14 +121,6 @@ LLVMValueRef LLVMModuleGetOrInsertFunction(LLVMModuleRef module,
 
     llvm::Constant *f = modulep->getOrInsertFunction(name, ftp);
     return wrap(f);
-}
-
-int LLVMHasInitializer(LLVMValueRef global_var)
-{
-    llvm::GlobalVariable *gvp = llvm::unwrap<llvm::GlobalVariable>(global_var);
-    assert(gvp);
-
-    return gvp->hasInitializer();
 }
 
 #define inst_checkfn(ourfn, llvmfn)                 \
@@ -263,10 +191,10 @@ LLVMValueRef LLVMBuildRetMultiple(LLVMBuilderRef builder,
     std::vector<llvm::Value *> values_vec;
     unwrap_vec(values, n_values, values_vec);
 
-    llvm::IRBuilder<> *builderp = llvm::unwrap(builder);
+    llvm::IRBuilder *builderp = llvm::unwrap(builder);
     assert(builderp);
 
-    return llvm::wrap(builderp->CreateAggregateRet(&values_vec[0], values_vec.size()));
+    return wrap(builderp->CreateRet(&values_vec[0], values_vec.size()));
 }
 
 LLVMValueRef LLVMBuildGetResult(LLVMBuilderRef builder, 
@@ -274,10 +202,10 @@ LLVMValueRef LLVMBuildGetResult(LLVMBuilderRef builder,
 {
     assert(name);
 
-    llvm::IRBuilder<> *builderp = llvm::unwrap(builder);
+    llvm::IRBuilder *builderp = llvm::unwrap(builder);
     assert(builderp);
 
-    return llvm::wrap(builderp->CreateExtractValue(llvm::unwrap(value), index, name));
+    return wrap(builderp->CreateGetResult(llvm::unwrap(value), index, name));
 }
 
 LLVMValueRef LLVMGetIntrinsic(LLVMModuleRef module, int id,
@@ -405,7 +333,7 @@ define_pass( DeadArgElimination )
 define_pass( DeadTypeElimination )
 define_pass( DeadInstElimination )
 define_pass( DeadStoreElimination )
-/* define_pass( GCSE ): removed in LLVM 2.4 */
+define_pass( GCSE )
 define_pass( GlobalDCE )
 define_pass( GlobalOptimizer )
 define_pass( GVNPRE )
